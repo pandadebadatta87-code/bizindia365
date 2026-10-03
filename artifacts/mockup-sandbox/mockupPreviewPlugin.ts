@@ -1,6 +1,6 @@
-import { mkdirSync, writeFileSync } from "fs";
-import path from "path";
-import glob from "fast-glob";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { readdir } from "node:fs/promises";
+import path from "node:path";
 import chokidar from "chokidar";
 import type { FSWatcher } from "chokidar";
 import type { Plugin } from "vite";
@@ -11,6 +11,48 @@ const GENERATED_MODULE = "src/.generated/mockup-components.ts";
 interface DiscoveredComponent {
   globKey: string;
   importPath: string;
+}
+
+async function readDirectoryEntries(directory: string) {
+  try {
+    return await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+async function findMockupFiles(rootDirectory: string): Promise<Array<string>> {
+  const pendingDirectories = [rootDirectory];
+  const files: Array<string> = [];
+
+  while (pendingDirectories.length > 0) {
+    const directory = pendingDirectories.pop()!;
+    const entries = await readDirectoryEntries(directory);
+
+    for (const entry of entries) {
+      if (entry.name.startsWith("_") || entry.name.startsWith(".")) {
+        continue;
+      }
+
+      const absolutePath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        pendingDirectories.push(absolutePath);
+      } else if (entry.isFile() && entry.name.endsWith(".tsx")) {
+        files.push(absolutePath);
+      }
+    }
+  }
+
+  return files;
 }
 
 export function mockupPreviewPlugin(): Plugin {
@@ -40,10 +82,9 @@ export function mockupPreviewPlugin(): Plugin {
   }
 
   async function discoverComponents(): Promise<Array<DiscoveredComponent>> {
-    const files = await glob(`${MOCKUPS_DIR}/**/*.tsx`, {
-      cwd: root,
-      ignore: ["**/_*/**", "**/_*.tsx"],
-    });
+    const files = (await findMockupFiles(getMockupsAbsDir()))
+      .map((file) => path.relative(root, file).split(path.sep).join("/"))
+      .sort();
 
     return files.map((f) => ({
       globKey: "./" + f.slice("src/".length),
