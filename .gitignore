@@ -5,6 +5,8 @@ dist
 tmp
 out-tsc
 *.tsbuildinfo
+artifacts/bizindia365/.next/
+artifacts/bizindia365/out/
 .expo
 .expo-shared
 

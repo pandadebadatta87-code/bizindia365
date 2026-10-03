@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "BizIndia365"
+description = "A minimal responsive BizIndia365 homepage displaying its name and the tagline Digital Business Solutions."
+version = "1.0.0"
+id = "artifacts/bizindia365"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/", "/_next/hmr" ]
+localPort = 23116
+
+[services.development]
+run = "pnpm --filter @workspace/bizindia365 run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/bizindia365", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/bizindia365/out"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23116"
+BASE_PATH = "/"
